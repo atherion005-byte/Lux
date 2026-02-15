@@ -1,0 +1,45 @@
+# Data & models (too large for git)
+datasets/
+checkpoints/
+outputs/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Pre-trained model weights (re-download on remote)
+models/clip/*.bin
+models/clip/*.msgpack
+models/clip/*.h5
+models/t5/*.bin
+models/t5/*.msgpack
+models/t5/*.h5
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment
+.env
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.log
+_vastai_setup.sh
