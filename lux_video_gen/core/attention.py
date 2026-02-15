@@ -277,9 +277,12 @@ class MultiHeadAttention(nn.Module):
         q = rearrange(q, "b n h d -> b h n d")
         k = rearrange(k, "b m h d -> b h m d")
         v = rearrange(v, "b m h d -> b h m d")
-        # Ensure mask is bool for SDPA
-        if mask is not None and mask.dtype != torch.bool:
-            mask = mask.bool()
+        # Reshape mask for SDPA broadcasting: [B, S] -> [B, 1, 1, S]
+        if mask is not None:
+            if mask.ndim == 2:
+                mask = mask[:, None, None, :]  # [B, 1, 1, S]
+            if mask.dtype != torch.bool:
+                mask = mask.bool()
         out = sdpa(q, k, v, attn_mask=mask, dropout_p=self.attn_drop.p if self.training else 0.0)
         return rearrange(out, "b h n d -> b n h d")
 
