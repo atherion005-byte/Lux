@@ -23,6 +23,16 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # Install bitsandbytes for 8-bit Adam
 pip3 install bitsandbytes -q
 
+# Auto-detect latest checkpoint to resume from
+RESUME_ARG=""
+if [ -d checkpoints/step_4000 ]; then
+    RESUME_ARG="--resume_from checkpoints/step_4000"
+    echo "Resuming from step_4000"
+elif [ -d checkpoints/best ]; then
+    RESUME_ARG="--resume_from checkpoints/best"
+    echo "Resuming from best checkpoint"
+fi
+
 python3 scripts/train.py \
     --stage dit \
     --model_variant B \
@@ -38,4 +48,5 @@ python3 scripts/train.py \
     --use_8bit_adam \
     --save_every_n_steps 500 \
     --log_every_n_steps 1 \
+    $RESUME_ARG \
     2>&1 | tee training_log.txt

@@ -466,6 +466,26 @@ class LuxTrainer:
 
         logger.info(f"Saved checkpoint to {checkpoint_path}")
 
+        # Cleanup old step checkpoints (keep last 2)
+        if name.startswith("step_"):
+            self._cleanup_old_checkpoints(keep=2)
+
+    def _cleanup_old_checkpoints(self, keep: int = 2):
+        """Remove old step checkpoints, keeping only the most recent ones."""
+        import re
+        step_dirs = []
+        for d in self.checkpoint_dir.iterdir():
+            if d.is_dir():
+                match = re.match(r"step_(\d+)", d.name)
+                if match:
+                    step_dirs.append((int(match.group(1)), d))
+        step_dirs.sort(key=lambda x: x[0])
+        while len(step_dirs) > keep:
+            step_num, old_dir = step_dirs.pop(0)
+            import shutil
+            shutil.rmtree(old_dir)
+            logger.info(f"Removed old checkpoint: {old_dir.name}")
+
     def load_checkpoint(self, checkpoint_path: str):
         """Load training checkpoint."""
         path = Path(checkpoint_path)
