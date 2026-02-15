@@ -37,4 +37,5 @@ python3 scripts/train.py \
     --gradient_checkpointing \
     --use_8bit_adam \
     --save_every_n_steps 500 \
+    --log_every_n_steps 1 \
     2>&1 | tee training_log.txt

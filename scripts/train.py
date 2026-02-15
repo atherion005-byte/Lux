@@ -57,6 +57,7 @@ def parse_args():
     parser.add_argument("--checkpoint_dir", type=str, default="checkpoints")
     parser.add_argument("--resume_from", type=str, default=None)
     parser.add_argument("--save_every_n_steps", type=int, default=None)
+    parser.add_argument("--log_every_n_steps", type=int, default=None)
     
     # Logging
     parser.add_argument("--use_wandb", action="store_true")
@@ -88,7 +89,7 @@ def main():
     for key in ["model_variant", "num_epochs", "batch_size", "learning_rate",
                  "resolution", "num_frames", "gradient_accumulation_steps",
                  "output_dir", "checkpoint_dir", "resume_from",
-                 "save_every_n_steps", "mixed_precision", "data_dir",
+                 "save_every_n_steps", "log_every_n_steps", "mixed_precision", "data_dir",
                  "metadata_file", "use_wandb", "project_name",
                  "gradient_checkpointing", "offload_models"]:
         val = getattr(args, key, None)
