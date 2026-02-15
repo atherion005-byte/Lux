@@ -264,7 +264,7 @@ class VideoTextDataset(Dataset):
     def __len__(self) -> int:
         return len(self.samples)
 
-    def __getitem__(self, idx: int) -> Dict[str, Any]:
+    def __getitem__(self, idx: int) -> Optional[Dict[str, Any]]:
         sample = self.samples[idx]
         
         video_path = sample.get("video", sample.get("path", ""))
@@ -288,8 +288,20 @@ class VideoTextDataset(Dataset):
             frames = torch.randn(self.num_frames, 3, self.target_h, self.target_w)
             fps = self.sample_fps
 
+        # Ensure correct frame count
+        if frames.shape[0] != self.num_frames:
+            if frames.shape[0] > self.num_frames:
+                frames = frames[:self.num_frames]
+            else:
+                pad = torch.zeros(self.num_frames - frames.shape[0], *frames.shape[1:])
+                frames = torch.cat([frames, pad], dim=0)
+
         # Resize
         frames = self._resize_video(frames)
+
+        # Ensure exact target resolution
+        if frames.shape[2] != self.target_h or frames.shape[3] != self.target_w:
+            frames = F.interpolate(frames, size=(self.target_h, self.target_w), mode="bilinear", align_corners=False)
 
         # Normalize to [-1, 1]
         frames = frames * 2.0 - 1.0
@@ -381,6 +393,48 @@ class AspectRatioBucketSampler(Sampler):
         return sum(len(b) for b in self.buckets)
 
 
+def video_collate_fn(batch):
+    """Custom collate function that handles variable-size video tensors gracefully."""
+    # Filter out None entries
+    batch = [b for b in batch if b is not None]
+    if not batch:
+        return None
+
+    result = {}
+    
+    # Get target shapes from first item
+    target_video_shape = batch[0]["video"].shape
+    
+    for key in batch[0].keys():
+        values = [b[key] for b in batch]
+        
+        if key == "caption":
+            # Keep strings as list
+            result[key] = values
+        elif isinstance(values[0], torch.Tensor):
+            # Ensure all tensors have the same shape
+            target_shape = values[0].shape
+            fixed_values = []
+            for v in values:
+                if v.shape != target_shape:
+                    # Resize to match target shape
+                    if v.ndim == target_shape.__len__():
+                        # Pad or truncate
+                        new_v = torch.zeros(target_shape, dtype=v.dtype)
+                        slices = tuple(slice(0, min(s1, s2)) for s1, s2 in zip(v.shape, target_shape))
+                        new_v[slices] = v[slices]
+                        fixed_values.append(new_v)
+                    else:
+                        fixed_values.append(values[0].clone())
+                else:
+                    fixed_values.append(v)
+            result[key] = torch.stack(fixed_values)
+        else:
+            result[key] = values
+    
+    return result
+
+
 def create_dataloader(
     data_dir: str,
     batch_size: int = 4,
@@ -426,6 +480,7 @@ def create_dataloader(
         pin_memory=True,
         drop_last=True,
         persistent_workers=num_workers > 0,
+        collate_fn=video_collate_fn,
     )
 
     return dataloader

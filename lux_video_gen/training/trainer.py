@@ -276,6 +276,10 @@ class LuxTrainer:
         num_batches = 0
 
         for batch_idx, batch in enumerate(self.train_dataloader):
+            # Skip None batches (from collate filtering)
+            if batch is None:
+                continue
+                
             # Select training step based on stage
             if self.training_stage == "vae":
                 losses = self.train_step_vae(batch)
