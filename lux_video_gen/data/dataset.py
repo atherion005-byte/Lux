@@ -136,15 +136,16 @@ class VideoTextDataset(Dataset):
         else:
             # Auto-discover videos in directory
             video_extensions = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
-            for video_path in sorted(self.data_dir.rglob("*")):
+            for video_path in sorted(self.data_dir.resolve().rglob("*")):
                 if video_path.suffix.lower() in video_extensions:
                     caption = ""
                     caption_file = video_path.with_suffix(".txt")
                     if caption_file.exists():
                         caption = caption_file.read_text().strip()
                     
+                    # Store absolute path to avoid path doubling
                     samples.append({
-                        "video": str(video_path),
+                        "video": str(video_path.resolve()),
                         "caption": caption,
                     })
         

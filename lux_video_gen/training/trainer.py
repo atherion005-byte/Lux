@@ -212,13 +212,13 @@ class LuxTrainer:
         with torch.no_grad():
             latent = self.vae_model.encode_video(video)
 
-        # Move latent to DiT device
-        latent = latent.to(self.dit_device)
+        # Move latent to DiT device with correct dtype
+        latent = latent.to(device=self.dit_device, dtype=self.autocast_dtype)
 
         # Encode text (no grad for text encoder)
         with torch.no_grad():
             text_emb, text_mask = self.text_encoder(captions, device=self.aux_device)
-            text_emb = text_emb.to(self.dit_device)
+            text_emb = text_emb.to(device=self.dit_device, dtype=self.autocast_dtype)
             text_mask = text_mask.to(self.dit_device)
 
         # Offload VAE and text encoder to CPU to free VRAM for DiT forward/backward
