@@ -77,6 +77,8 @@ class LuxTrainer:
         training_stage: str = "dit",  # "vae", "dit", "multimodal", "finetune"
         # Guidance
         cfg_dropout_prob: float = 0.1,
+        # Memory optimization
+        offload_models: bool = False,
     ):
         self.dit_model = dit_model
         self.vae_model = vae_model
@@ -95,6 +97,7 @@ class LuxTrainer:
         self.log_every_n_steps = log_every_n_steps
         self.training_stage = training_stage
         self.cfg_dropout_prob = cfg_dropout_prob
+        self.offload_models = offload_models
         self.global_step = 0
 
         # Create directories
@@ -215,6 +218,13 @@ class LuxTrainer:
             text_emb = text_emb.to(self.dit_device)
             text_mask = text_mask.to(self.dit_device)
 
+        # Offload VAE and text encoder to CPU to free VRAM for DiT forward/backward
+        if self.offload_models and self.dit_device == self.aux_device:
+            self.vae_model.cpu()
+            self.text_encoder.cpu()
+            del video
+            torch.cuda.empty_cache()
+
         # CFG dropout: randomly drop conditioning
         if self.training and self.cfg_dropout_prob > 0:
             drop_mask = torch.rand(latent.shape[0]) < self.cfg_dropout_prob
@@ -257,6 +267,12 @@ class LuxTrainer:
             losses = self.loss_fn(pred, target, timesteps)
 
         loss = losses["total"] if isinstance(losses, dict) else losses
+        
+        # Reload offloaded models back to GPU for next step
+        if self.offload_models and self.dit_device == self.aux_device:
+            self.vae_model.to(self.aux_device)
+            self.text_encoder.to(self.aux_device)
+        
         return {"loss": loss, **(losses if isinstance(losses, dict) else {})}
 
     def train_step_vae(self, batch: Dict[str, Any]) -> Dict[str, float]:

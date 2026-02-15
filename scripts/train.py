@@ -64,6 +64,10 @@ def parse_args():
     
     # Hardware
     parser.add_argument("--mixed_precision", type=str, default=None, choices=["fp16", "bf16", "no"])
+    parser.add_argument("--gradient_checkpointing", action="store_true",
+                        help="Enable gradient checkpointing to save VRAM (slower but ~40%% less memory)")
+    parser.add_argument("--offload_models", action="store_true",
+                        help="Offload VAE/text encoder to CPU after encoding to save VRAM")
     
     return parser.parse_args()
 
@@ -83,7 +87,8 @@ def main():
                  "resolution", "num_frames", "gradient_accumulation_steps",
                  "output_dir", "checkpoint_dir", "resume_from",
                  "save_every_n_steps", "mixed_precision", "data_dir",
-                 "metadata_file", "use_wandb", "project_name"]:
+                 "metadata_file", "use_wandb", "project_name",
+                 "gradient_checkpointing", "offload_models"]:
         val = getattr(args, key, None)
         if val is not None:
             overrides[key] = val
@@ -118,6 +123,11 @@ def main():
     vae = VideoVAE()
     dit = LuxDiT.from_config(config.model_variant)
     text_encoder = TextEncoderWrapper()
+    
+    # Enable gradient checkpointing for memory savings
+    if getattr(config, 'gradient_checkpointing', False) or getattr(args, 'gradient_checkpointing', False):
+        dit.enable_gradient_checkpointing()
+        logger.info("Gradient checkpointing ENABLED (~40% VRAM savings, ~30% slower)")
     
     # Log model sizes
     for name, model in [("VAE", vae), ("DiT", dit)]:
@@ -170,6 +180,7 @@ def main():
         project_name=config.project_name,
         training_stage=config.stage,
         cfg_dropout_prob=config.cfg_dropout_prob,
+        offload_models=getattr(args, 'offload_models', False),
     )
     
     # Resume if specified
