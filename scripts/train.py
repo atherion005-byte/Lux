@@ -126,6 +126,18 @@ def main():
     dit = LuxDiT.from_config(config.model_variant)
     text_encoder = TextEncoderWrapper()
     
+    # Cast models to bf16 to halve memory (fp32: 6.4GB -> bf16: 3.2GB for 1.6B params)
+    if config.mixed_precision == "bf16":
+        dit = dit.to(torch.bfloat16)
+        vae = vae.to(torch.bfloat16)
+        text_encoder = text_encoder.to(torch.bfloat16)
+        logger.info("Models cast to bfloat16 (halves parameter memory)")
+    elif config.mixed_precision == "fp16":
+        dit = dit.half()
+        vae = vae.half()
+        text_encoder = text_encoder.half()
+        logger.info("Models cast to float16 (halves parameter memory)")
+    
     # Enable gradient checkpointing for memory savings
     if getattr(config, 'gradient_checkpointing', False) or getattr(args, 'gradient_checkpointing', False):
         dit.enable_gradient_checkpointing()
