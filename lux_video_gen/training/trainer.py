@@ -127,7 +127,7 @@ class LuxTrainer:
             self.loss_fn = CombinedTrainingLoss(prediction_type="v_prediction")
 
         # Setup mixed precision
-        self.scaler = GradScaler(enabled=(mixed_precision == "fp16"))
+        self.scaler = torch.amp.GradScaler('cuda', enabled=(mixed_precision == "fp16"))
         self.autocast_dtype = {
             "fp16": torch.float16,
             "bf16": torch.bfloat16,
