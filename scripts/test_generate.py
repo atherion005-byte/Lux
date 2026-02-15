@@ -35,14 +35,21 @@ def main():
     
     if ckpt_dirs:
         latest_ckpt = os.path.join(ckpt_base, ckpt_dirs[-1])
-        ckpt_file = os.path.join(latest_ckpt, "dit_model.pt")
-        if os.path.exists(ckpt_file):
-            logger.info(f"Loading checkpoint: {ckpt_file}")
-            state = torch.load(ckpt_file, map_location="cpu", weights_only=True)
+        # Try EMA model first (smoother), then regular model
+        ema_file = os.path.join(latest_ckpt, "model_ema.pt")
+        model_file = os.path.join(latest_ckpt, "model.pt")
+        if os.path.exists(ema_file):
+            logger.info(f"Loading EMA checkpoint: {ema_file}")
+            state = torch.load(ema_file, map_location="cpu", weights_only=True)
+            dit.load_state_dict(state)
+            logger.info("EMA checkpoint loaded!")
+        elif os.path.exists(model_file):
+            logger.info(f"Loading checkpoint: {model_file}")
+            state = torch.load(model_file, map_location="cpu", weights_only=True)
             dit.load_state_dict(state)
             logger.info("Checkpoint loaded!")
         else:
-            logger.info(f"No dit_model.pt in {latest_ckpt}, using random weights")
+            logger.info(f"No model.pt in {latest_ckpt}, using random weights")
     else:
         logger.info("No checkpoints found - using randomly initialized model")
         logger.info("(This will produce noise/abstract patterns, but proves the pipeline works)")
