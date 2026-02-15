@@ -17,7 +17,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.cuda.amp import autocast
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +164,7 @@ class LuxPipeline:
         )
         latents = torch.randn(
             latent_shape, device=self.dit_device,
-            dtype=torch.float16, generator=generator
+            dtype=torch.bfloat16, generator=generator
         )
 
         # 4. Prepare conditions
@@ -191,7 +190,7 @@ class LuxPipeline:
                 context_mask = torch.cat([prompt_mask, neg_mask], dim=0)
                 cond_input = torch.cat([conditions, conditions], dim=0)
 
-                with autocast(device_type="cuda", dtype=torch.float16):
+                with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     output = self.dit_model(
                         latent_input, t_input,
                         context=context,
@@ -203,7 +202,7 @@ class LuxPipeline:
                 pred_cond, pred_uncond = pred.chunk(2, dim=0)
                 pred = pred_uncond + config.guidance_scale * (pred_cond - pred_uncond)
             else:
-                with autocast(device_type="cuda", dtype=torch.float16):
+                with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     output = self.dit_model(
                         latents, t_batch,
                         context=prompt_embeds,
