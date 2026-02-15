@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.cuda.amp import GradScaler, autocast
+# Using torch.amp directly (modern API)
 from torch.utils.data import DataLoader
 
 from .ema import EMAModel
@@ -243,7 +243,7 @@ class LuxTrainer:
         ], dim=-1).to(self.dit_device)
 
         # Forward pass
-        with autocast(device_type="cuda", dtype=self.autocast_dtype):
+        with torch.amp.autocast('cuda', dtype=self.autocast_dtype):
             output = self.dit_model(
                 noisy_latent,
                 timesteps,
@@ -263,7 +263,7 @@ class LuxTrainer:
         """Single training step for VAE model."""
         video = batch["video"].to(self.aux_device)
 
-        with autocast(device_type="cuda", dtype=self.autocast_dtype):
+        with torch.amp.autocast('cuda', dtype=self.autocast_dtype):
             recon, mean, log_var = self.vae_model(video)
             losses = self.loss_fn(recon, video, mean, log_var)
 
