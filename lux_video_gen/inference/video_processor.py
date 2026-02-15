@@ -183,9 +183,44 @@ class VideoProcessor:
     def _save_with_opencv(
         self, frames: np.ndarray, path: str, fps: int
     ):
-        """Save with OpenCV."""
+        """Save with OpenCV, then convert to H.264 with ffmpeg if available."""
         import cv2
+        import subprocess
+        import shutil
+        
         T, H, W, C = frames.shape
+        
+        # Try ffmpeg first (produces universally playable H.264 MP4)
+        if shutil.which("ffmpeg"):
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp:
+                tmp_path = tmp.name
+            
+            # Write raw frames via OpenCV to temp file
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            writer = cv2.VideoWriter(tmp_path, fourcc, fps, (W, H))
+            for t in range(T):
+                frame_bgr = cv2.cvtColor(frames[t], cv2.COLOR_RGB2BGR)
+                writer.write(frame_bgr)
+            writer.release()
+            
+            # Convert to H.264 with ffmpeg
+            try:
+                subprocess.run([
+                    "ffmpeg", "-y", "-i", tmp_path,
+                    "-c:v", "libx264", "-preset", "fast",
+                    "-crf", "23", "-pix_fmt", "yuv420p",
+                    path
+                ], capture_output=True, timeout=60)
+                os.unlink(tmp_path)
+                return
+            except Exception:
+                # Fallback: just move the raw file
+                if os.path.exists(tmp_path):
+                    shutil.move(tmp_path, path)
+                return
+        
+        # Fallback: raw mp4v (may not play in all players)
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         writer = cv2.VideoWriter(path, fourcc, fps, (W, H))
         for t in range(T):
