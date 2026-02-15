@@ -244,8 +244,11 @@ class DualTextEncoder(nn.Module):
         (t5_emb, t5_mask), (clip_emb, clip_mask) = self.encode(texts, device)
 
         # Project to common dimension
-        t5_proj = self.t5_proj(t5_emb.float()).to(t5_emb.dtype)
-        clip_proj = self.clip_proj(clip_emb.float()).to(clip_emb.dtype)
+        # Cast to proj weight dtype for compatibility (bf16 or fp32)
+        t5_dtype = t5_emb.dtype
+        t5_proj = self.t5_proj(t5_emb.to(self.t5_proj.weight.dtype if hasattr(self.t5_proj, 'weight') else t5_emb.dtype)).to(t5_dtype)
+        clip_dtype = clip_emb.dtype
+        clip_proj = self.clip_proj(clip_emb.to(self.clip_proj.weight.dtype if hasattr(self.clip_proj, 'weight') else clip_emb.dtype)).to(clip_dtype)
 
         # Concatenate along token dimension
         embeddings = torch.cat([t5_proj, clip_proj], dim=1)
@@ -312,5 +315,10 @@ class TextEncoderWrapper(nn.Module):
             mask: (B, seq_len)
         """
         emb, mask = self.encoder(texts, device=device)
-        emb = self.proj(emb.float()).to(emb.dtype)
+        # Cast to proj weight dtype for compatibility (bf16 or fp32)
+        orig_dtype = emb.dtype
+        if hasattr(self.proj, 'weight'):
+            emb = self.proj(emb.to(self.proj.weight.dtype)).to(orig_dtype)
+        else:
+            emb = self.proj(emb)
         return emb, mask
