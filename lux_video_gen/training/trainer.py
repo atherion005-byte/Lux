@@ -205,7 +205,7 @@ class LuxTrainer:
         5. Predict noise/velocity with DiT
         6. Compute loss
         """
-        video = batch["video"].to(self.aux_device)
+        video = batch["video"].to(device=self.aux_device, dtype=self.autocast_dtype)
         captions = batch["caption"]
 
         # Encode video to latent space (no grad for VAE)
