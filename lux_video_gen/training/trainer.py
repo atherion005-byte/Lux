@@ -79,6 +79,7 @@ class LuxTrainer:
         cfg_dropout_prob: float = 0.1,
         # Memory optimization
         offload_models: bool = False,
+        use_8bit_adam: bool = False,
     ):
         self.dit_model = dit_model
         self.vae_model = vae_model
@@ -98,6 +99,7 @@ class LuxTrainer:
         self.training_stage = training_stage
         self.cfg_dropout_prob = cfg_dropout_prob
         self.offload_models = offload_models
+        self.use_8bit_adam = use_8bit_adam
         self.global_step = 0
 
         # Create directories
@@ -121,6 +123,7 @@ class LuxTrainer:
             self.trainable_model,
             learning_rate=learning_rate,
             weight_decay=weight_decay,
+            use_8bit=use_8bit_adam,
         )
 
         # Setup loss

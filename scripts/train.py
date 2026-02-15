@@ -68,6 +68,8 @@ def parse_args():
                         help="Enable gradient checkpointing to save VRAM (slower but ~40%% less memory)")
     parser.add_argument("--offload_models", action="store_true",
                         help="Offload VAE/text encoder to CPU after encoding to save VRAM")
+    parser.add_argument("--use_8bit_adam", action="store_true",
+                        help="Use 8-bit Adam optimizer to save ~10GB VRAM on optimizer states")
     
     return parser.parse_args()
 
@@ -181,6 +183,7 @@ def main():
         training_stage=config.stage,
         cfg_dropout_prob=config.cfg_dropout_prob,
         offload_models=getattr(args, 'offload_models', False),
+        use_8bit_adam=getattr(args, 'use_8bit_adam', False),
     )
     
     # Resume if specified

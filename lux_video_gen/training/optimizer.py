@@ -83,15 +83,38 @@ def create_optimizer(
     betas: Tuple[float, float] = (0.9, 0.999),
     eps: float = 1e-8,
     optimizer_type: str = "adamw",
+    use_8bit: bool = False,
 ) -> torch.optim.Optimizer:
-    """Create optimizer with parameter groups."""
+    """Create optimizer with parameter groups.
+    
+    Args:
+        use_8bit: Use 8-bit Adam from bitsandbytes to save ~10GB VRAM
+                  on optimizer states (1.6B model: 12.8GB -> 3.2GB).
+    """
     param_groups = get_parameter_groups(model, weight_decay=weight_decay)
 
     # Apply LR scaling
     for group in param_groups:
         group["lr"] = learning_rate * group.pop("lr_scale", 1.0)
 
-    if optimizer_type == "adamw":
+    if use_8bit and optimizer_type == "adamw":
+        try:
+            import bitsandbytes as bnb
+            optimizer = bnb.optim.AdamW8bit(
+                param_groups, lr=learning_rate, betas=betas, eps=eps
+            )
+            import logging
+            logging.getLogger(__name__).info(
+                "Using 8-bit AdamW (saves ~10GB VRAM on optimizer states)"
+            )
+        except ImportError:
+            import logging
+            logging.getLogger(__name__).warning(
+                "bitsandbytes not installed, falling back to standard AdamW. "
+                "Install with: pip install bitsandbytes"
+            )
+            optimizer = AdamW(param_groups, lr=learning_rate, betas=betas, eps=eps)
+    elif optimizer_type == "adamw":
         optimizer = AdamW(param_groups, lr=learning_rate, betas=betas, eps=eps)
     else:
         raise ValueError(f"Unknown optimizer: {optimizer_type}")
