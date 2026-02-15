@@ -500,6 +500,10 @@ class LuxTrainer:
 
             if self.ema is not None and "ema_state_dict" in state:
                 self.ema.load_state_dict(state["ema_state_dict"])
+                # Move EMA shadow params to the model's device
+                device = next(self.trainable_model.parameters()).device
+                for name in self.ema.shadow_params:
+                    self.ema.shadow_params[name] = self.ema.shadow_params[name].to(device)
 
             logger.info(f"Loaded checkpoint from {path} (step {self.global_step})")
         elif (path / "model.pt").exists():
